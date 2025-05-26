@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>在线聊天室系统</title>
+    <title>在线聊天室</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-firestore-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-auth-compat.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -12,7 +15,7 @@
         }
 
         body {
-            font-family: 'Arial', sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
@@ -21,63 +24,47 @@
         }
 
         .container {
-            width: 90%;
-            max-width: 1200px;
-            background: rgba(255, 255, 255, 0.95);
+            background: white;
             border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 800px;
+            height: 600px;
             overflow: hidden;
-            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
         }
 
         .header {
-            background: linear-gradient(45deg, #667eea, #764ba2);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 20px;
             text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+
+        .user-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 14px;
         }
 
         .main-content {
-            display: flex;
-            height: 600px;
-        }
-
-        .sidebar {
-            width: 300px;
-            background: #f8f9fa;
-            border-right: 1px solid #dee2e6;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .chat-area {
             flex: 1;
             display: flex;
             flex-direction: column;
+            padding: 20px;
         }
 
-        .user-section {
-            padding: 20px;
-            border-bottom: 1px solid #dee2e6;
-        }
-
-        .room-section {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-        }
-
-        .messages-container {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-            background: #ffffff;
-        }
-
-        .message-input-area {
-            padding: 20px;
-            border-top: 1px solid #dee2e6;
-            background: #f8f9fa;
+        .login-section {
+            text-align: center;
+            margin-bottom: 30px;
         }
 
         .input-group {
@@ -88,178 +75,191 @@
             display: block;
             margin-bottom: 5px;
             font-weight: bold;
-            color: #495057;
+            color: #333;
         }
 
         .input-group input {
             width: 100%;
-            padding: 10px;
-            border: 1px solid #ced4da;
+            max-width: 300px;
+            padding: 12px;
+            border: 2px solid #ddd;
             border-radius: 8px;
-            font-size: 14px;
+            font-size: 16px;
             transition: border-color 0.3s;
         }
 
         .input-group input:focus {
             outline: none;
             border-color: #667eea;
-            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.25);
         }
 
         .btn {
-            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
             border: none;
+            padding: 12px 24px;
             border-radius: 8px;
             cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s;
+            font-size: 16px;
             margin: 5px;
+            transition: transform 0.2s;
         }
 
-        .btn-primary {
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background: #5a6268;
-        }
-
-        .room-item {
-            background: white;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 10px;
-            border: 1px solid #dee2e6;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .room-item:hover {
-            background: #e9ecef;
+        .btn:hover {
             transform: translateY(-2px);
         }
 
-        .room-item.active {
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            color: white;
+        .btn:active {
+            transform: translateY(0);
         }
 
-        .message {
-            margin-bottom: 15px;
-            padding: 10px;
-            border-radius: 10px;
-            animation: fadeIn 0.3s;
-        }
-
-        .message.own {
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            color: white;
-            margin-left: 20%;
-        }
-
-        .message.other {
-            background: #e9ecef;
-            margin-right: 20%;
-        }
-
-        .message-header {
-            font-size: 12px;
-            opacity: 0.7;
-            margin-bottom: 5px;
-        }
-
-        .message-input {
-            display: flex;
-            gap: 10px;
-        }
-
-        .message-input input {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #ced4da;
-            border-radius: 20px;
-            font-size: 14px;
-        }
-
-        .invite-code {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            padding: 10px;
-            border-radius: 8px;
-            margin-top: 10px;
-            font-family: monospace;
-            text-align: center;
-        }
-
-        .hidden {
+        .room-section {
             display: none;
         }
 
-        .online-users {
-            margin-top: 20px;
+        .room-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .room-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            background: #fafafa;
+            max-height: 250px;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .message-sender {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 14px;
+        }
+
+        .message-content {
+            margin-top: 5px;
+            color: #333;
+        }
+
+        .message-time {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .input-area {
+            display: flex;
             padding: 15px;
             background: white;
-            border-radius: 10px;
+            border-top: 1px solid #eee;
         }
 
-        .user-list {
-            margin-top: 10px;
+        .input-area input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-right: 10px;
         }
 
-        .user-item {
-            padding: 5px 10px;
-            background: #e9ecef;
-            margin: 2px 0;
-            border-radius: 15px;
-            font-size: 12px;
+        .members-list {
+            background: #f8f9fa;
+            padding: 10px;
+            margin-top: 15px;
+            border-radius: 8px;
+            border: 1px solid #eee;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        .members-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #333;
         }
 
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 15px 20px;
-            background: #28a745;
+        .member {
+            display: inline-block;
+            background: #667eea;
             color: white;
-            border-radius: 10px;
-            z-index: 1000;
-            animation: slideIn 0.3s;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin: 2px;
         }
 
-        @keyframes slideIn {
-            from { transform: translateX(100%); }
-            to { transform: translateX(0); }
+        .invite-code {
+            background: #e7f3ff;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #b3d9ff;
+            margin: 10px 0;
+            text-align: center;
         }
 
-        @media (max-width: 768px) {
-            .main-content {
+        .invite-code strong {
+            color: #0066cc;
+            font-size: 18px;
+            letter-spacing: 2px;
+        }
+
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        .success {
+            color: #155724;
+            background: #d4edda;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                margin: 10px;
+                height: calc(100vh - 20px);
+            }
+            
+            .room-controls {
                 flex-direction: column;
-                height: auto;
+                align-items: stretch;
             }
             
-            .sidebar {
+            .btn {
                 width: 100%;
-                height: 300px;
-            }
-            
-            .chat-area {
-                height: 400px;
             }
         }
     </style>
@@ -267,520 +267,591 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🌟 在线聊天室系统</h1>
-            <p>创建聊天室，邀请朋友，畅所欲言</p>
+            <h1>🚀 在线聊天室</h1>
+            <div class="user-info" id="userInfo"></div>
         </div>
         
         <div class="main-content">
-            <div class="sidebar">
-                <!-- 用户信息组件 -->
-                <div class="user-section">
+            <!-- 登录界面 -->
+            <div class="login-section" id="loginSection">
+                <div class="input-group">
+                    <label for="username">用户名称</label>
+                    <input type="text" id="username" placeholder="请输入您的用户名">
+                </div>
+                <button class="btn" onclick="chatApp.setUsername()">设置用户名</button>
+                
+                <div style="margin: 30px 0;">
+                    <h3>加入聊天室</h3>
                     <div class="input-group">
-                        <label for="username">👤 用户名称</label>
-                        <input type="text" id="username" placeholder="请输入您的昵称">
-                        <button class="btn btn-primary" onclick="UserModule.setUsername()">设置昵称</button>
+                        <label for="inviteCode">邀请码</label>
+                        <input type="text" id="inviteCode" placeholder="请输入邀请码">
                     </div>
+                    <button class="btn" onclick="chatApp.joinRoom()">加入聊天室</button>
                 </div>
                 
-                <!-- 聊天室管理组件 -->
-                <div class="room-section">
+                <div>
+                    <h3>创建新聊天室</h3>
                     <div class="input-group">
-                        <label>🏠 聊天室管理</label>
-                        <button class="btn btn-primary" onclick="RoomModule.createRoom()">创建聊天室</button>
-                        <input type="text" id="inviteCode" placeholder="输入邀请码">
-                        <button class="btn btn-secondary" onclick="RoomModule.joinRoom()">加入聊天室</button>
+                        <label for="roomName">聊天室名称</label>
+                        <input type="text" id="roomName" placeholder="请输入聊天室名称">
                     </div>
-                    
-                    <div class="online-users">
-                        <strong>📋 我的聊天室</strong>
-                        <div id="roomList" class="user-list"></div>
-                    </div>
-                    
-                    <div class="online-users">
-                        <strong>👥 在线用户</strong>
-                        <div id="onlineUsers" class="user-list"></div>
-                    </div>
+                    <button class="btn" onclick="chatApp.createRoom()">创建聊天室</button>
                 </div>
+                
+                <div id="message"></div>
             </div>
             
-            <!-- 聊天区域组件 -->
-            <div class="chat-area">
-                <div id="messagesContainer" class="messages-container">
-                    <div style="text-align: center; color: #6c757d; margin-top: 50px;">
-                        <h3>欢迎使用聊天室系统！</h3>
-                        <p>请先设置昵称，然后创建或加入聊天室开始聊天</p>
+            <!-- 聊天室界面 -->
+            <div class="room-section" id="roomSection">
+                <div class="room-controls">
+                    <button class="btn" onclick="chatApp.leaveRoom()">离开聊天室</button>
+                    <button class="btn" onclick="chatApp.copyInviteCode()">复制邀请码</button>
+                </div>
+                
+                <div class="room-info" id="roomInfo"></div>
+                
+                <div class="chat-container">
+                    <div class="messages" id="messages"></div>
+                    <div class="input-area">
+                        <input type="text" id="messageInput" placeholder="输入消息..." onkeypress="chatApp.handleKeyPress(event)">
+                        <button class="btn" onclick="chatApp.sendMessage()">发送</button>
                     </div>
                 </div>
                 
-                <div class="message-input-area">
-                    <div class="message-input">
-                        <input type="text" id="messageInput" placeholder="输入消息..." onkeypress="ChatModule.handleKeyPress(event)">
-                        <button class="btn btn-primary" onclick="ChatModule.sendMessage()">发送</button>
-                    </div>
+                <div class="members-list">
+                    <div class="members-title">在线成员</div>
+                    <div id="membersList"></div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // 数据存储模块 - 模拟后端数据存储
-        const DataStore = {
-            // 存储所有聊天室数据
-            rooms: {},
-            
-            // 存储用户会话信息
-            users: {},
-            
-            // 当前用户信息
-            currentUser: {
-                id: null,
-                name: '',
-                currentRoom: null
-            },
-            
-            /**
-             * 初始化数据存储
-             */
+        // ============================
+        // Firebase配置模块 (config.js)
+        // ============================
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
+        // TODO: Add SDKs for Firebase products that you want to use
+        // https://firebase.google.com/docs/web/setup#available-libraries
+
+        // Your web app's Firebase configuration
+        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+        const firebaseConfig = {
+            apiKey: "AIzaSyBnzF7809nZG0fVCYvToA87UzvjOVHLaVM",
+            authDomain: "chat-room-a5d6a.firebaseapp.com",
+            projectId: "chat-room-a5d6a",
+            storageBucket: "chat-room-a5d6a.firebasestorage.app",
+            messagingSenderId: "278081929301",
+            appId: "1:278081929301:web:fbfffc848b8784e1b754dc",
+            measurementId: "G-9X943ZPBST"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+
+            // 初始化Firebase
             init() {
-                // 生成唯一用户ID
-                this.currentUser.id = this.generateId();
-                console.log('数据存储模块初始化完成');
+                try {
+                    firebase.initializeApp(this.config);
+                    this.db = firebase.firestore();
+                    console.log('Firebase初始化成功');
+                    return true;
+                } catch (error) {
+                    console.error('Firebase初始化失败:', error);
+                    return false;
+                }
             },
-            
-            /**
-             * 生成唯一ID
-             */
-            generateId() {
-                return Date.now().toString(36) + Math.random().toString(36).substr(2);
+
+            // 获取Firestore实例
+            getDB() {
+                return this.db;
+            }
+        };
+
+        // ============================
+        // 工具函数模块 (utils.js)
+        // ============================
+        const Utils = {
+            // 生成随机邀请码
+            generateInviteCode() {
+                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+                let result = '';
+                for (let i = 0; i < 6; i++) {
+                    result += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                return result;
             },
-            
-            /**
-             * 创建聊天室
-             */
-            createRoom() {
-                const roomId = this.generateId();
-                const inviteCode = this.generateInviteCode();
+
+            // 格式化时间
+            formatTime(timestamp) {
+                const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+                return date.toLocaleTimeString('zh-CN', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            },
+
+            // 显示消息
+            showMessage(message, type = 'error') {
+                const messageDiv = document.getElementById('message');
+                messageDiv.innerHTML = `<div class="${type}">${message}</div>`;
+                setTimeout(() => {
+                    messageDiv.innerHTML = '';
+                }, 3000);
+            },
+
+            // 复制到剪贴板
+            async copyToClipboard(text) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    this.showMessage('邀请码已复制到剪贴板！', 'success');
+                } catch (err) {
+                    // 降级处理
+                    const textArea = document.createElement('textarea');
+                    textArea.value = text;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    this.showMessage('邀请码已复制到剪贴板！', 'success');
+                }
+            },
+
+            // 验证输入
+            validateInput(value, minLength = 1) {
+                return value && value.trim().length >= minLength;
+            }
+        };
+
+        // ============================
+        // 用户管理模块 (user.js)
+        // ============================
+        const UserManager = {
+            currentUser: null,
+
+            // 设置当前用户
+            setUser(username) {
+                if (!Utils.validateInput(username, 2)) {
+                    Utils.showMessage('用户名至少需要2个字符！');
+                    return false;
+                }
                 
-                this.rooms[roomId] = {
-                    id: roomId,
-                    name: `聊天室-${Object.keys(this.rooms).length + 1}`,
-                    inviteCode: inviteCode,
-                    messages: [],
-                    users: [this.currentUser.id],
-                    createdBy: this.currentUser.id,
-                    createdAt: new Date().toISOString()
+                this.currentUser = {
+                    id: this.generateUserId(),
+                    name: username.trim(),
+                    joinTime: new Date()
                 };
                 
-                this.currentUser.currentRoom = roomId;
-                console.log('创建聊天室:', this.rooms[roomId]);
-                return this.rooms[roomId];
+                // 更新UI显示
+                document.getElementById('userInfo').innerText = `👤 ${this.currentUser.name}`;
+                return true;
             },
-            
-            /**
-             * 生成邀请码
-             */
-            generateInviteCode() {
-                return Math.random().toString(36).substr(2, 8).toUpperCase();
+
+            // 生成用户ID
+            generateUserId() {
+                return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
             },
-            
-            /**
-             * 通过邀请码加入聊天室
-             */
-            joinRoomByCode(inviteCode) {
-                for (let roomId in this.rooms) {
-                    if (this.rooms[roomId].inviteCode === inviteCode) {
-                        if (!this.rooms[roomId].users.includes(this.currentUser.id)) {
-                            this.rooms[roomId].users.push(this.currentUser.id);
-                        }
-                        this.currentUser.currentRoom = roomId;
-                        console.log('加入聊天室:', this.rooms[roomId]);
-                        return this.rooms[roomId];
-                    }
+
+            // 获取当前用户
+            getCurrentUser() {
+                return this.currentUser;
+            },
+
+            // 检查用户是否已登录
+            isLoggedIn() {
+                return this.currentUser !== null;
+            }
+        };
+
+        // ============================
+        // 聊天室管理模块 (room.js)
+        // ============================
+        const RoomManager = {
+            currentRoom: null,
+            db: null,
+            messagesListener: null,
+            membersListener: null,
+
+            // 初始化
+            init(database) {
+                this.db = database;
+            },
+
+            // 创建聊天室
+            async createRoom(roomName) {
+                if (!Utils.validateInput(roomName, 2)) {
+                    Utils.showMessage('聊天室名称至少需要2个字符！');
+                    return false;
                 }
-                return null;
-            },
-            
-            /**
-             * 获取用户的聊天室列表
-             */
-            getUserRooms() {
-                const userRooms = [];
-                for (let roomId in this.rooms) {
-                    if (this.rooms[roomId].users.includes(this.currentUser.id)) {
-                        userRooms.push(this.rooms[roomId]);
-                    }
-                }
-                return userRooms;
-            },
-            
-            /**
-             * 添加消息到聊天室
-             */
-            addMessage(roomId, message) {
-                if (this.rooms[roomId]) {
-                    const messageObj = {
-                        id: this.generateId(),
-                        userId: this.currentUser.id,
-                        username: this.currentUser.name,
-                        content: message,
-                        timestamp: new Date().toISOString()
+
+                const inviteCode = Utils.generateInviteCode();
+                const roomData = {
+                    name: roomName.trim(),
+                    inviteCode: inviteCode,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    createdBy: UserManager.getCurrentUser().id,
+                    members: {}
+                };
+
+                try {
+                    const docRef = await this.db.collection('rooms').add(roomData);
+                    this.currentRoom = {
+                        id: docRef.id,
+                        ...roomData,
+                        inviteCode: inviteCode
                     };
-                    this.rooms[roomId].messages.push(messageObj);
-                    console.log('添加消息:', messageObj);
-                    return messageObj;
+                    
+                    // 自动加入创建的房间
+                    await this.addMemberToRoom(this.currentRoom.id, UserManager.getCurrentUser());
+                    return true;
+                } catch (error) {
+                    console.error('创建聊天室失败:', error);
+                    Utils.showMessage('创建聊天室失败，请重试！');
+                    return false;
                 }
-                return null;
             },
-            
-            /**
-             * 获取聊天室消息
-             */
-            getRoomMessages(roomId) {
-                return this.rooms[roomId] ? this.rooms[roomId].messages : [];
+
+            // 通过邀请码加入聊天室
+            async joinRoomByCode(inviteCode) {
+                if (!Utils.validateInput(inviteCode)) {
+                    Utils.showMessage('请输入邀请码！');
+                    return false;
+                }
+
+                try {
+                    const querySnapshot = await this.db.collection('rooms')
+                        .where('inviteCode', '==', inviteCode.trim().toUpperCase())
+                        .get();
+
+                    if (querySnapshot.empty) {
+                        Utils.showMessage('邀请码无效！');
+                        return false;
+                    }
+
+                    const roomDoc = querySnapshot.docs[0];
+                    this.currentRoom = {
+                        id: roomDoc.id,
+                        ...roomDoc.data()
+                    };
+
+                    // 加入房间
+                    await this.addMemberToRoom(this.currentRoom.id, UserManager.getCurrentUser());
+                    return true;
+                } catch (error) {
+                    console.error('加入聊天室失败:', error);
+                    Utils.showMessage('加入聊天室失败，请重试！');
+                    return false;
+                }
             },
-            
-            /**
-             * 获取聊天室在线用户
-             */
-            getRoomUsers(roomId) {
-                if (!this.rooms[roomId]) return [];
+
+            // 添加成员到聊天室
+            async addMemberToRoom(roomId, user) {
+                try {
+                    const memberData = {};
+                    memberData[`members.${user.id}`] = {
+                        name: user.name,
+                        joinTime: firebase.firestore.FieldValue.serverTimestamp(),
+                        isOnline: true
+                    };
+
+                    await this.db.collection('rooms').doc(roomId).update(memberData);
+                } catch (error) {
+                    console.error('添加成员失败:', error);
+                    throw error;
+                }
+            },
+
+            // 离开聊天室
+            async leaveRoom() {
+                if (!this.currentRoom) return;
+
+                try {
+                    const user = UserManager.getCurrentUser();
+                    const updateData = {};
+                    updateData[`members.${user.id}.isOnline`] = false;
+
+                    await this.db.collection('rooms').doc(this.currentRoom.id).update(updateData);
+                    
+                    // 清理监听器
+                    if (this.messagesListener) {
+                        this.messagesListener();
+                        this.messagesListener = null;
+                    }
+                    if (this.membersListener) {
+                        this.membersListener();
+                        this.membersListener = null;
+                    }
+
+                    this.currentRoom = null;
+                } catch (error) {
+                    console.error('离开聊天室失败:', error);
+                }
+            },
+
+            // 获取当前聊天室
+            getCurrentRoom() {
+                return this.currentRoom;
+            },
+
+            // 监听聊天室成员变化
+            listenToMembers(callback) {
+                if (!this.currentRoom) return;
+
+                this.membersListener = this.db.collection('rooms').doc(this.currentRoom.id)
+                    .onSnapshot((doc) => {
+                        if (doc.exists) {
+                            const data = doc.data();
+                            const members = data.members || {};
+                            callback(members);
+                        }
+                    });
+            }
+        };
+
+        // ============================
+        // 消息管理模块 (message.js)
+        // ============================
+        const MessageManager = {
+            db: null,
+
+            // 初始化
+            init(database) {
+                this.db = database;
+            },
+
+            // 发送消息
+            async sendMessage(roomId, user, content) {
+                if (!Utils.validateInput(content)) {
+                    Utils.showMessage('消息内容不能为空！');
+                    return false;
+                }
+
+                const messageData = {
+                    roomId: roomId,
+                    senderId: user.id,
+                    senderName: user.name,
+                    content: content.trim(),
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    createdAt: new Date()
+                };
+
+                try {
+                    await this.db.collection('messages').add(messageData);
+                    return true;
+                } catch (error) {
+                    console.error('发送消息失败:', error);
+                    Utils.showMessage('发送消息失败，请重试！');
+                    return false;
+                }
+            },
+
+            // 监听消息
+            listenToMessages(roomId, callback) {
+                return this.db.collection('messages')
+                    .where('roomId', '==', roomId)
+                    .orderBy('createdAt', 'asc')
+                    .onSnapshot((querySnapshot) => {
+                        const messages = [];
+                        querySnapshot.forEach((doc) => {
+                            messages.push({
+                                id: doc.id,
+                                ...doc.data()
+                            });
+                        });
+                        callback(messages);
+                    });
+            }
+        };
+
+        // ============================
+        // 主应用程序 (app.js)
+        // ============================
+        const ChatApp = {
+            // 初始化应用
+            async init() {
+                // 初始化Firebase
+                if (!FirebaseConfig.init()) {
+                    Utils.showMessage('Firebase配置错误，请检查配置信息！');
+                    return;
+                }
+
+                const db = FirebaseConfig.getDB();
+                RoomManager.init(db);
+                MessageManager.init(db);
+
+                console.log('聊天应用初始化完成');
+            },
+
+            // 设置用户名
+            setUsername() {
+                const username = document.getElementById('username').value;
+                if (UserManager.setUser(username)) {
+                    Utils.showMessage('用户名设置成功！', 'success');
+                }
+            },
+
+            // 创建聊天室
+            async createRoom() {
+                if (!UserManager.isLoggedIn()) {
+                    Utils.showMessage('请先设置用户名！');
+                    return;
+                }
+
+                const roomName = document.getElementById('roomName').value;
+                if (await RoomManager.createRoom(roomName)) {
+                    Utils.showMessage('聊天室创建成功！', 'success');
+                    this.enterRoom();
+                }
+            },
+
+            // 加入聊天室
+            async joinRoom() {
+                if (!UserManager.isLoggedIn()) {
+                    Utils.showMessage('请先设置用户名！');
+                    return;
+                }
+
+                const inviteCode = document.getElementById('inviteCode').value;
+                if (await RoomManager.joinRoomByCode(inviteCode)) {
+                    Utils.showMessage('成功加入聊天室！', 'success');
+                    this.enterRoom();
+                }
+            },
+
+            // 进入聊天室界面
+            enterRoom() {
+                // 切换界面
+                document.getElementById('loginSection').style.display = 'none';
+                document.getElementById('roomSection').style.display = 'block';
+
+                const room = RoomManager.getCurrentRoom();
                 
-                return this.rooms[roomId].users.map(userId => {
-                    // 模拟其他用户数据
-                    if (userId === this.currentUser.id) {
-                        return {
-                            id: userId,
-                            name: this.currentUser.name || '匿名用户'
-                        };
-                    } else {
-                        return {
-                            id: userId,
-                            name: `用户${userId.substr(-4)}`
-                        };
+                // 更新房间信息显示
+                document.getElementById('roomInfo').innerHTML = `
+                    <h3>📱 ${room.name}</h3>
+                    <div class="invite-code">
+                        <div>邀请码: <strong>${room.inviteCode}</strong></div>
+                        <small>分享此邀请码让朋友加入聊天室</small>
+                    </div>
+                `;
+
+                // 开始监听消息
+                this.startListeningToMessages();
+                
+                // 开始监听成员变化
+                this.startListeningToMembers();
+
+                // 清空输入框
+                document.getElementById('messageInput').value = '';
+                document.getElementById('messageInput').focus();
+            },
+
+            // 开始监听消息
+            startListeningToMessages() {
+                const room = RoomManager.getCurrentRoom();
+                if (!room) return;
+
+                RoomManager.messagesListener = MessageManager.listenToMessages(room.id, (messages) => {
+                    this.displayMessages(messages);
+                });
+            },
+
+            // 开始监听成员变化
+            startListeningToMembers() {
+                RoomManager.listenToMembers((members) => {
+                    this.displayMembers(members);
+                });
+            },
+
+            // 显示消息
+            displayMessages(messages) {
+                const messagesDiv = document.getElementById('messages');
+                messagesDiv.innerHTML = '';
+
+                messages.forEach(message => {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = 'message';
+                    
+                    const time = message.timestamp ? 
+                        Utils.formatTime(message.timestamp) : 
+                        Utils.formatTime(message.createdAt);
+
+                    messageDiv.innerHTML = `
+                        <div class="message-sender">${message.senderName}</div>
+                        <div class="message-content">${this.escapeHtml(message.content)}</div>
+                        <div class="message-time">${time}</div>
+                    `;
+                    messagesDiv.appendChild(messageDiv);
+                });
+
+                // 滚动到底部
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            },
+
+            // 显示成员列表
+            displayMembers(members) {
+                const membersListDiv = document.getElementById('membersList');
+                membersListDiv.innerHTML = '';
+
+                Object.keys(members).forEach(userId => {
+                    const member = members[userId];
+                    if (member.isOnline) {
+                        const memberDiv = document.createElement('div');
+                        memberDiv.className = 'member';
+                        memberDiv.textContent = member.name;
+                        membersListDiv.appendChild(memberDiv);
                     }
                 });
-            }
-        };
-
-        // 用户管理模块
-        const UserModule = {
-            /**
-             * 设置用户名
-             */
-            setUsername() {
-                const usernameInput = document.getElementById('username');
-                const username = usernameInput.value.trim();
-                
-                if (username.length < 2) {
-                    this.showNotification('用户名至少需要2个字符', 'error');
-                    return;
-                }
-                
-                if (username.length > 20) {
-                    this.showNotification('用户名不能超过20个字符', 'error');
-                    return;
-                }
-                
-                DataStore.currentUser.name = username;
-                this.showNotification(`欢迎，${username}！`, 'success');
-                
-                // 更新UI
-                UIModule.updateRoomList();
-                console.log('设置用户名:', username);
             },
-            
-            /**
-             * 显示通知
-             */
-            showNotification(message, type = 'success') {
-                const notification = document.createElement('div');
-                notification.className = 'notification';
-                notification.style.background = type === 'error' ? '#dc3545' : '#28a745';
-                notification.textContent = message;
-                
-                document.body.appendChild(notification);
-                
-                setTimeout(() => {
-                    notification.remove();
-                }, 3000);
-            }
-        };
 
-        // 聊天室管理模块
-        const RoomModule = {
-            /**
-             * 创建聊天室
-             */
-            createRoom() {
-                if (!DataStore.currentUser.name) {
-                    UserModule.showNotification('请先设置用户名', 'error');
-                    return;
-                }
-                
-                const room = DataStore.createRoom();
-                if (room) {
-                    UserModule.showNotification(`创建聊天室成功！邀请码：${room.inviteCode}`, 'success');
-                    UIModule.updateRoomList();
-                    UIModule.switchToRoom(room.id);
-                    this.showInviteCode(room.inviteCode);
-                }
-            },
-            
-            /**
-             * 加入聊天室
-             */
-            joinRoom() {
-                if (!DataStore.currentUser.name) {
-                    UserModule.showNotification('请先设置用户名', 'error');
-                    return;
-                }
-                
-                const inviteCodeInput = document.getElementById('inviteCode');
-                const inviteCode = inviteCodeInput.value.trim().toUpperCase();
-                
-                if (!inviteCode) {
-                    UserModule.showNotification('请输入邀请码', 'error');
-                    return;
-                }
-                
-                const room = DataStore.joinRoomByCode(inviteCode);
-                if (room) {
-                    UserModule.showNotification(`成功加入聊天室：${room.name}`, 'success');
-                    inviteCodeInput.value = '';
-                    UIModule.updateRoomList();
-                    UIModule.switchToRoom(room.id);
-                } else {
-                    UserModule.showNotification('邀请码无效或聊天室不存在', 'error');
-                }
-            },
-            
-            /**
-             * 显示邀请码
-             */
-            showInviteCode(inviteCode) {
-                const container = document.getElementById('messagesContainer');
-                const codeDiv = document.createElement('div');
-                codeDiv.className = 'invite-code';
-                codeDiv.innerHTML = `
-                    <strong>🎫 邀请码</strong><br>
-                    <span style="font-size: 18px; font-weight: bold;">${inviteCode}</span><br>
-                    <small>分享此邀请码给朋友，让他们加入聊天室</small>
-                `;
-                
-                container.appendChild(codeDiv);
-                container.scrollTop = container.scrollHeight;
-            }
-        };
-
-        // 聊天功能模块
-        const ChatModule = {
-            /**
-             * 发送消息
-             */
-            sendMessage() {
+            // 发送消息
+            async sendMessage() {
                 const messageInput = document.getElementById('messageInput');
-                const message = messageInput.value.trim();
-                
-                if (!message) {
-                    return;
-                }
-                
-                if (!DataStore.currentUser.name) {
-                    UserModule.showNotification('请先设置用户名', 'error');
-                    return;
-                }
-                
-                if (!DataStore.currentUser.currentRoom) {
-                    UserModule.showNotification('请先创建或加入聊天室', 'error');
-                    return;
-                }
-                
-                // 添加消息到数据存储
-                const messageObj = DataStore.addMessage(DataStore.currentUser.currentRoom, message);
-                
-                if (messageObj) {
-                    // 更新UI显示消息
-                    UIModule.displayMessage(messageObj);
+                const content = messageInput.value;
+
+                const room = RoomManager.getCurrentRoom();
+                const user = UserManager.getCurrentUser();
+
+                if (await MessageManager.sendMessage(room.id, user, content)) {
                     messageInput.value = '';
-                    
-                    // 模拟其他用户的回复（演示多用户效果）
-                    setTimeout(() => {
-                        this.simulateOtherUserMessage();
-                    }, 1000 + Math.random() * 2000);
+                    messageInput.focus();
                 }
             },
-            
-            /**
-             * 处理回车键发送消息
-             */
+
+            // 处理回车键发送
             handleKeyPress(event) {
                 if (event.key === 'Enter') {
                     this.sendMessage();
                 }
             },
-            
-            /**
-             * 模拟其他用户消息（演示用）
-             */
-            simulateOtherUserMessage() {
-                if (!DataStore.currentUser.currentRoom) return;
-                
-                const responses = [
-                    '👍 赞同！',
-                    '有意思，继续聊！',
-                    '😄 哈哈，有趣',
-                    '我也是这么想的',
-                    '说得对！',
-                    '🤔 让我想想...',
-                    '好的，了解了',
-                    '👏 说得好！'
-                ];
-                
-                // 随机决定是否回复
-                if (Math.random() > 0.6) {
-                    const response = responses[Math.floor(Math.random() * responses.length)];
-                    const fakeUserId = 'user_' + Math.random().toString(36).substr(2, 5);
-                    
-                    const messageObj = {
-                        id: DataStore.generateId(),
-                        userId: fakeUserId,
-                        username: `访客${fakeUserId.substr(-3)}`,
-                        content: response,
-                        timestamp: new Date().toISOString()
-                    };
-                    
-                    DataStore.rooms[DataStore.currentUser.currentRoom].messages.push(messageObj);
-                    UIModule.displayMessage(messageObj);
-                }
-            }
-        };
 
-        // UI管理模块
-        const UIModule = {
-            /**
-             * 更新聊天室列表显示
-             */
-            updateRoomList() {
-                const roomList = document.getElementById('roomList');
-                const userRooms = DataStore.getUserRooms();
+            // 离开聊天室
+            async leaveRoom() {
+                await RoomManager.leaveRoom();
                 
-                roomList.innerHTML = '';
+                // 切换回登录界面
+                document.getElementById('roomSection').style.display = 'none';
+                document.getElementById('loginSection').style.display = 'block';
                 
-                userRooms.forEach(room => {
-                    const roomItem = document.createElement('div');
-                    roomItem.className = 'room-item';
-                    if (room.id === DataStore.currentUser.currentRoom) {
-                        roomItem.classList.add('active');
-                    }
-                    
-                    roomItem.innerHTML = `
-                        <div style="font-weight: bold;">${room.name}</div>
-                        <div style="font-size: 12px; color: #666;">
-                            邀请码: ${room.inviteCode} | 用户: ${room.users.length}
-                        </div>
-                    `;
-                    
-                    roomItem.onclick = () => this.switchToRoom(room.id);
-                    roomList.appendChild(roomItem);
-                });
+                // 清空输入框
+                document.getElementById('inviteCode').value = '';
+                document.getElementById('roomName').value = '';
                 
-                // 更新在线用户列表
-                this.updateOnlineUsers();
+                Utils.showMessage('已离开聊天室', 'success');
             },
-            
-            /**
-             * 切换到指定聊天室
-             */
-            switchToRoom(roomId) {
-                DataStore.currentUser.currentRoom = roomId;
-                this.updateRoomList();
-                this.loadRoomMessages(roomId);
-                console.log('切换到聊天室:', roomId);
-            },
-            
-            /**
-             * 加载聊天室消息
-             */
-            loadRoomMessages(roomId) {
-                const container = document.getElementById('messagesContainer');
-                container.innerHTML = '';
-                
-                const messages = DataStore.getRoomMessages(roomId);
-                const room = DataStore.rooms[roomId];
-                
-                // 显示聊天室欢迎信息
-                const welcomeDiv = document.createElement('div');
-                welcomeDiv.style.textAlign = 'center';
-                welcomeDiv.style.color = '#6c757d';
-                welcomeDiv.style.marginBottom = '20px';
-                welcomeDiv.innerHTML = `
-                    <h3>💬 ${room.name}</h3>
-                    <p>邀请码: <strong>${room.inviteCode}</strong></p>
-                    <p>创建时间: ${new Date(room.createdAt).toLocaleString()}</p>
-                `;
-                container.appendChild(welcomeDiv);
-                
-                // 显示历史消息
-                messages.forEach(message => {
-                    this.displayMessage(message, false);
-                });
-                
-                container.scrollTop = container.scrollHeight;
-            },
-            
-            /**
-             * 显示消息
-             */
-            displayMessage(messageObj, scroll = true) {
-                const container = document.getElementById('messagesContainer');
-                const messageDiv = document.createElement('div');
-                
-                const isOwnMessage = messageObj.userId === DataStore.currentUser.id;
-                messageDiv.className = `message ${isOwnMessage ? 'own' : 'other'}`;
-                
-                const time = new Date(messageObj.timestamp).toLocaleTimeString();
-                messageDiv.innerHTML = `
-                    <div class="message-header">
-                        ${messageObj.username} • ${time}
-                    </div>
-                    <div>${this.escapeHtml(messageObj.content)}</div>
-                `;
-                
-                container.appendChild(messageDiv);
-                
-                if (scroll) {
-                    container.scrollTop = container.scrollHeight;
+
+            // 复制邀请码
+            copyInviteCode() {
+                const room = RoomManager.getCurrentRoom();
+                if (room) {
+                    Utils.copyToClipboard(room.inviteCode);
                 }
             },
-            
-            /**
-             * 更新在线用户列表
-             */
-            updateOnlineUsers() {
-                const onlineUsers = document.getElementById('onlineUsers');
-                
-                if (DataStore.currentUser.currentRoom) {
-                    const users = DataStore.getRoomUsers(DataStore.currentUser.currentRoom);
-                    onlineUsers.innerHTML = '';
-                    
-                    users.forEach(user => {
-                        const userItem = document.createElement('div');
-                        userItem.className = 'user-item';
-                        userItem.textContent = user.name;
-                        if (user.id === DataStore.currentUser.id) {
-                            userItem.style.background = '#667eea';
-                            userItem.style.color = 'white';
-                        }
-                        onlineUsers.appendChild(userItem);
-                    });
-                } else {
-                    onlineUsers.innerHTML = '<div style="color: #6c757d; text-align: center;">未加入聊天室</div>';
-                }
-            },
-            
-            /**
-             * HTML转义防止XSS
-             */
+
+            // HTML转义防止XSS
             escapeHtml(text) {
                 const div = document.createElement('div');
                 div.textContent = text;
@@ -788,50 +859,14 @@
             }
         };
 
-        // 主程序入口
-        const App = {
-            /**
-             * 应用程序初始化
-             */
-            init() {
-                console.log('🚀 在线聊天室系统启动中...');
-                
-                // 初始化各个模块
-                DataStore.init();
-                
-                // 设置默认用户名
-                document.getElementById('username').value = `用户${Date.now().toString().substr(-4)}`;
-                
-                // 初始化UI
-                UIModule.updateRoomList();
-                
-                // 添加欢迎消息
-                this.showWelcomeMessage();
-                
-                console.log('✅ 系统初始化完成');
-            },
-            
-            /**
-             * 显示欢迎消息
-             */
-            showWelcomeMessage() {
-                setTimeout(() => {
-                    UserModule.showNotification('欢迎使用在线聊天室系统！', 'success');
-                }, 1000);
-            }
-        };
+        // 全局变量，便于调试和访问
+        window.chatApp = ChatApp;
 
-        // 页面加载完成后启动应用
-        document.addEventListener('DOMContentLoaded', function() {
-            App.init();
-        });
-
-        // 添加页面可见性变化处理
-        document.addEventListener('visibilitychange', function() {
-            if (!document.hidden && DataStore.currentUser.currentRoom) {
-                // 页面重新获得焦点时刷新在线用户
-                UIModule.updateOnlineUsers();
-            }
+        // ============================
+        // 应用程序启动
+        // ============================
+        document.addEventListener('DOMContentLoaded', () => {
+            ChatApp.init();
         });
     </script>
 </body>
